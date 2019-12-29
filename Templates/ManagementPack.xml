@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ManagementPack SchemaVersion="2.0" ContentReadable="true" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Manifest>
+  </Manifest>
+  <TypeDefinitions>
+  </TypeDefinitions>  
+  <Monitoring>
+  </Monitoring>
+  <LanguagePacks>
+  </LanguagePacks>
+</ManagementPack>

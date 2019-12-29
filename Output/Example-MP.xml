@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ManagementPack SchemaVersion="2.0" ContentReadable="true" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Manifest>
+    <Identity>
+      <ID>Demo.CollectConsolidatedEvent</ID>
+      <Version>1.0.0.0</Version>
+    </Identity>
+    <Name>Demo.CollectConsolidatedEvent</Name>
+    <References>
+      <Reference Alias="SC">
+        <ID>Microsoft.SystemCenter.Library</ID>
+        <Version>6.1.7221.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="Windows">
+        <ID>Microsoft.Windows.Library</ID>
+        <Version>7.5.8501.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="Health">
+        <ID>System.Health.Library</ID>
+        <Version>7.0.8433.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="System">
+        <ID>System.Library</ID>
+        <Version>7.5.8501.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="SCDW">
+        <ID>Microsoft.SystemCenter.DataWarehouse.Library</ID>
+        <Version>7.1.10226.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+    </References>
+  </Manifest>
+  <TypeDefinitions>
+    <ModuleTypes>
+      <WriteActionModuleType ID="##CompanyID##.##AppName##.##TaskName##.Task.WA" Accessibility="Internal" Batching="false">
+        <Configuration>
+          <xsd:element minOccurs="1" name="Param1" type="xsd:string" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+          <xsd:element minOccurs="1" name="Param2" type="xsd:string" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+          <xsd:element minOccurs="1" name="TimeoutSeconds" type="xsd:integer" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+        </Configuration>
+        <OverrideableParameters>
+          <OverrideableParameter ID="Param1" Selector="$Config/Param1$" ParameterType="string" />
+          <OverrideableParameter ID="Param2" Selector="$Config/Param2$" ParameterType="string" />
+          <OverrideableParameter ID="TimeoutSeconds" Selector="$Config/TimeoutSeconds$" ParameterType="int" />
+        </OverrideableParameters>
+        <ModuleImplementation Isolation="Any">
+          <Composite>
+            <MemberModules>
+              <WriteAction ID="PSWA" TypeID="Windows!Microsoft.Windows.PowerShellWriteAction">
+                <ScriptName>##CompanyID##.##AppName##.##TaskName##.Task.WA.ps1</ScriptName>
+                <ScriptBody>
+                  #=================================================================================
+                  #  Script to execute a task in PowerShell
+                  #=================================================================================
+                  param($Param1, $Param2)				  
+                  #=================================================================================
+                  # Constants section - modify stuff here:
+
+                  # Assign script name variable for use in event logging
+                  $ScriptName = "##CompanyID##.##AppName##.##TaskName##.Task.WA.ps1"
+                  #=================================================================================
+
+                  # Gather script start time
+                  $StartTime = Get-Date
+
+                  # Gather who the script is running as
+                  $whoami = whoami
+
+                  #Load the MOMScript API and discovery propertybag
+                  $momapi = New-Object -comObject "Mom.ScriptAPI"
+
+                  #Log script event that we are starting task
+                  $momapi.LogScriptEvent($ScriptName,6667,0, "Starting script task.  Running as ($whoami)")
+
+                  # Begin Main Script
+                  #=================================================================================
+                  Write-Host "PowerShell script executed"
+				  Write-Host "Param1: " $Param1
+				  Write-Host "Param2: " $Param2
+                  #=================================================================================				  
+
+                  # Log an event for script ending and total execution time.
+                  $EndTime = Get-Date
+                  $ScriptTime = ($EndTime - $StartTime).TotalSeconds
+                  $momapi.LogScriptEvent($ScriptName,6667,0,"`n Script has completed. `n Runtime was ($ScriptTime) seconds.")
+                </ScriptBody>
+                <Parameters>
+                  <Parameter>
+                    <Name>Param1</Name>
+                    <Value>$Config/Param1$</Value>
+                  </Parameter>
+                  <Parameter>
+                    <Name>Param2</Name>
+                    <Value>$Config/Param2$</Value>
+                  </Parameter>
+                </Parameters>
+                <TimeoutSeconds>$Config/TimeoutSeconds$</TimeoutSeconds>
+              </WriteAction>
+            </MemberModules>
+            <Composition>
+              <Node ID="PSWA" />
+            </Composition>
+          </Composite>
+        </ModuleImplementation>
+        <OutputType>System!System.BaseData</OutputType>
+        <InputType>System!System.BaseData</InputType>
+      </WriteActionModuleType>
+    </ModuleTypes>
+  </TypeDefinitions>
+  <Monitoring>
+    <Tasks>
+      <Task ID="##CompanyID##.##AppName##.##TaskName##.Task" Accessibility="Public" Enabled="false" Target="##ClassID##" Timeout="120" Remotable="true">
+        <Category>Custom</Category>
+        <WriteAction ID="CMDWA" TypeID="System!System.CommandExecuter">
+          <ApplicationName>%systemroot%\System32\cmd.exe</ApplicationName>
+          <WorkingDirectory />
+          <CommandLine>/c EVENTCREATE /T ERROR /ID 100 /L APPLICATION /SO TEST /D "This is a Test event 100"</CommandLine>
+          <TimeoutSeconds>60</TimeoutSeconds>
+          <RequireOutput>true</RequireOutput>
+        </WriteAction>
+      </Task>
+    </Tasks>
+    <Tasks>
+      <Task ID="##CompanyID##.##AppName##.##TaskName##.Task" Accessibility="Public" Enabled="true" Target="##ClassID##" Timeout="120" Remotable="true">
+        <Category>Custom</Category>
+        <WriteAction ID="PSWA" TypeID="##CompanyID##.##AppName##.##TaskName##.Task.WA">
+          <Param1>YourStaticParam</Param1>
+          <Param2>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/PrincipalName$</Param2>
+          <TimeoutSeconds>60</TimeoutSeconds>
+        </WriteAction>
+      </Task>
+    </Tasks>
+  </Monitoring>
+  <LanguagePacks>
+    <LanguagePack ID="ENU" IsDefault="true">
+      <DisplayStrings>
+        <DisplayString ElementID="##CompanyID##.##AppName##.##TaskName##.Task">
+          <Name>##TaskName## Task</Name>
+        </DisplayString>
+      </DisplayStrings>
+      <KnowledgeArticles />
+    </LanguagePack>
+    <LanguagePack ID="ENU" IsDefault="true">
+      <DisplayStrings>
+        <DisplayString ElementID="##CompanyID##.##AppName##.##TaskName##.Task">
+          <Name>##TaskName## Task</Name>
+        </DisplayString>
+      </DisplayStrings>
+      <KnowledgeArticles />
+    </LanguagePack>
+  </LanguagePacks>
+</ManagementPack>

@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ManagementPack SchemaVersion="2.0" ContentReadable="true" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Manifest>
+    <Identity>
+      <ID>Demo.CollectConsolidatedEvent</ID>
+      <Version>1.0.0.0</Version>
+    </Identity>
+    <Name>Demo.CollectConsolidatedEvent</Name>
+    <References>
+      <Reference Alias="SC">
+        <ID>Microsoft.SystemCenter.Library</ID>
+        <Version>6.1.7221.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+	  <Reference Alias="Windows">
+        <ID>Microsoft.Windows.Library</ID>
+        <Version>7.5.8501.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="Health">
+        <ID>System.Health.Library</ID>
+        <Version>7.0.8433.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="System">
+        <ID>System.Library</ID>
+        <Version>7.5.8501.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="SCDW">
+        <ID>Microsoft.SystemCenter.DataWarehouse.Library</ID>
+        <Version>7.1.10226.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>	  
+    </References>
+  </Manifest>
+  <TypeDefinitions>
+    <ModuleTypes>
+      <ConditionDetectionModuleType ID="Demo.CollectConsolidatedEvent.Consolidate999ThenMapCD" Accessibility="Internal" Batching="false" Stateful="true" PassThrough="false">
+        <Configuration>
+        </Configuration>
+        <ModuleImplementation Isolation="Any">
+          <Composite>
+            <MemberModules>
+              <ConditionDetection ID="Consolidate" TypeID="System!System.ConsolidatorCondition">
+                <Consolidator>
+                  <ConsolidationProperties>
+					<!--  If you want to consolidate ONLY events with matching identical parameters and collect multiple events when params are different, uncomment this section for your specific params -->
+                    <!--  
+					<PropertyXPathQuery>Params/Param[1]</PropertyXPathQuery>
+                    <PropertyXPathQuery>Params/Param[3]</PropertyXPathQuery>
+					<PropertyXPathQuery>Params/Param[5]</PropertyXPathQuery>
+					-->
+                  </ConsolidationProperties>
+                  <TimeControl>
+                    <WithinTimeSchedule>
+                      <Interval>30</Interval>
+                      <!-- set the time windows to look for events in seconds -->					  
+                    </WithinTimeSchedule>
+                  </TimeControl>
+                  <CountingCondition>
+                    <CountMode>OnNewItemNOP_OnTimerOutputRestart</CountMode>
+                  </CountingCondition>
+                </Consolidator>
+              </ConditionDetection>
+              <ConditionDetection ID="EventMapper" TypeID="System!System.Event.GenericDataMapper">
+                <EventOriginId>$Target/Id$</EventOriginId>
+                <PublisherId>$MPElement$</PublisherId>
+                <PublisherName>$Data/Context/DataItem/PublisherName$</PublisherName>
+                <Channel>$Data/Context/DataItem/Channel$</Channel>
+                <LoggingComputer>$Data/Context/DataItem/LoggingComputer$</LoggingComputer>
+                <EventNumber>$Data/Context/DataItem/EventNumber$</EventNumber>
+                <EventCategory>$Data/Context/DataItem/EventCategory$</EventCategory>
+                <EventLevel>$Data/Context/DataItem/EventLevel$</EventLevel>
+                <UserName />
+				<Description>$Data/Context/DataItem/EventDescription$</Description>
+                <Params />
+              </ConditionDetection>
+            </MemberModules>
+            <Composition>
+              <Node ID="EventMapper">
+                <Node ID="Consolidate" />
+              </Node>
+            </Composition>
+          </Composite>
+        </ModuleImplementation>
+        <OutputType>System!System.Event.Data</OutputType>
+        <InputTypes>
+          <InputType>Windows!Microsoft.Windows.EventData</InputType>
+        </InputTypes>
+      </ConditionDetectionModuleType>
+    </ModuleTypes>
+  </TypeDefinitions>  
+  <Monitoring>
+    <Rules>
+      <Rule ID="Demo.CollectConsolidatedEvent.Event999.Rule" Enabled="true" Target="Windows!Microsoft.Windows.Server.OperatingSystem" ConfirmDelivery="true" Remotable="true" Priority="Normal" DiscardLevel="100">
+        <Category>Custom</Category>
+        <DataSources>
+          <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.EventProvider">
+            <ComputerName>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$</ComputerName>
+            <LogName>Application</LogName>
+            <Expression>
+				<And>			
+					<Expression>
+					  <SimpleExpression>
+						<ValueExpression>
+						  <XPathQuery Type="UnsignedInteger">EventDisplayNumber</XPathQuery>
+						</ValueExpression>
+						<Operator>Equal</Operator>
+						<ValueExpression>
+						  <Value Type="UnsignedInteger">999</Value>
+						</ValueExpression>
+					  </SimpleExpression>
+					</Expression>
+					<Expression>
+					  <SimpleExpression>
+						<ValueExpression>
+						  <XPathQuery Type="String">PublisherName</XPathQuery>
+						</ValueExpression>
+						<Operator>Equal</Operator>
+						<ValueExpression>
+						  <Value Type="String">TEST</Value>
+						</ValueExpression>
+					  </SimpleExpression>
+					</Expression>			
+				</And>
+            </Expression>			
+          </DataSource>
+        </DataSources>
+        <ConditionDetection ID="CD" TypeID="Demo.CollectConsolidatedEvent.Consolidate999ThenMapCD" />
+        <WriteActions>
+          <WriteAction ID="CollectEventOpsDB" TypeID="SC!Microsoft.SystemCenter.CollectEvent" />
+          <WriteAction ID="CollectEventDWDB" TypeID="SCDW!Microsoft.SystemCenter.DataWarehouse.PublishEventData"/>		  
+        </WriteActions>
+      </Rule>
+    </Rules>
+  </Monitoring>
+  <LanguagePacks>
+    <LanguagePack ID="ENU" IsDefault="true">
+      <DisplayStrings>
+        <DisplayString ElementID="Demo.CollectConsolidatedEvent.Event999.Rule">
+          <Name>Demo Event 999 Collect Consolidated Event Rule</Name>
+          <Description />
+        </DisplayString>		
+      </DisplayStrings>
+      <KnowledgeArticles></KnowledgeArticles>
+    </LanguagePack>
+  </LanguagePacks>
+</ManagementPack>
