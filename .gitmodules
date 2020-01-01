@@ -1,0 +1,3 @@
+[submodule "Fragments"]
+	path = Fragments
+	url = https://github.com/SilectSoftware/Fragments.git
