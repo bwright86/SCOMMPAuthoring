@@ -1,4 +1,5 @@
 # SCOM MP Authoring Tool
+
 This is a Powershell project to assist in SCOM Management Pack Authoring.
 
 It works like a scaffolding engine to combine multiple .mpx fragments (A common pattern for SCOM MP authoring), and merges them into a single XML Management Pack.
@@ -11,7 +12,7 @@ These fragments are common patterns for a variety of scenarios, and can be copie
 
 Here is a download link:
 
-https://gallery.technet.microsoft.com/SCOM-Management-Pack-VSAE-2c506737
+<https://gallery.technet.microsoft.com/SCOM-Management-Pack-VSAE-2c506737>
 
 ## Using this project
 
@@ -23,7 +24,7 @@ Below are the steps to use this project:
 
 2. Download the **SCOM VSAE Fragment Library** from the below link:
 
-    https://gallery.technet.microsoft.com/SCOM-Management-Pack-VSAE-2c506737
+    <https://gallery.technet.microsoft.com/SCOM-Management-Pack-VSAE-2c506737>
 
 3. Create a new folder for your MP project in the ```\Management Packs``` folder, name it something concise and descriptive.
 

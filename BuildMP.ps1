@@ -36,7 +36,7 @@ if ( -not $(Test-Path $outputDir) ) {
     $null = New-Item $outputDir -ItemType Directory -Force
 }
 
-"Management Packs to build: {0}" -f $managementPacks.count
+"Management Packs to build: {0}" -f $managementPacks.count | Write-Host
 
 # Process each MP project in the MPBuildDir
 foreach ($mp in $managementPacks) {
@@ -47,10 +47,12 @@ foreach ($mp in $managementPacks) {
     # Get a list of .mpx files in the MP project.
     $fragments = @(Get-ChildItem -Path $mp.fullname -Filter "*.mpx" -Recurse)
 
-    "{0}: Fragments to add: {1}" -f $mp.Name, $fragments.count
+    "{0}: Fragments to add: {1}" -f $mp.Name, $fragments.count | Write-Host
 
     # Process each .mpx file
     foreach ($fragment in $fragments) {
+
+        "  Fragment file: {0}" -f $fragment.name | Write-Host
 
         [xml]$fragXML = Get-Content $fragment.fullname
 
@@ -61,10 +63,10 @@ foreach ($mp in $managementPacks) {
         # Process each section of the manifest fragment separately.
         foreach ($section in $eligibleSections.localname) {
 
-            "{0}: Merging section: {1}" -f $fragment.name, $section.localname
+            "    {0}: Merging section: {1}" -f $fragment.name, $section.localname
 
             foreach ($childNode in $fragXML.SelectNodes("ManagementPackFragment/$section").ChildNodes) {
-            $mpXML.SelectNodes("/ManagementPack/$section").AppendChild($mpXML.ImportNode($childNode.clone(),$true))
+            $mpXML.SelectNodes("/ManagementPack/$section").AppendChild($mpXML.ImportNode($childNode.clone(),$true)) | Out-Null
             }
         }
     }
