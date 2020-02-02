@@ -30,12 +30,25 @@ $xmlChildPaths = @(
     "TypeDefinitions/EntityTypes/ClassTypes"
     "TypeDefinitions/EntityTypes/RelationshipTypes"
     "TypeDefinitions/ModuleTypes"
+    "TypeDefinitions/MonitorTypes"
     "Monitoring/Discoveries"
     "Monitoring/Monitors"
+    "Monitoring/Recoveries"
+    "Monitoring/Rules"
     "Monitoring/Tasks"
+    "Categories"
+    "Presentation/ConsoleTasks"
+    "Presentation/FolderItems"
+    "Presentation/Folders"
+    "Presentation/StringResources"
+    "Presentation/Views"
+    "Resources"
     "LanguagePacks/LanguagePack/DisplayStrings"
     "LanguagePacks/LanguagePack/KnowledgeArticles"
 )
+
+# XML Nodes to ignore.
+$ignoreXMLNodes = @("/#text","/#comment")
 
 
 #endregion  User Configuration
@@ -138,10 +151,22 @@ foreach ($mp in $managementPacks) {
             }
         } # Foreach: XPath
 
+        $ignoreXMLNodesRegex = "^$($ignoreXMLNodes -join "|^")"
+            $fragXMLLeafNodes = $fragXMLLeafNodes | Where-Object {$_ -notmatch $ignoreXMLNodesRegex}
+
         if ($fragXMLLeafNodes.count -gt 0) {
             $fragXMLLeafNodes | ForEach-Object {"Fragment node not merged: $_"} | Write-Warning
         }
     } # Foreach: Fragment
+
+    # Sort child nodes alphabetically.
+    foreach ($childXPath in $xmlChildPaths) {
+
+        # Check that node exists.
+        if ($([System.Xml.XmlNode]$orig = $mpXML.ManagementPack.SelectSingleNode($childXPath)) -and $orig.ChildNode.count -gt 0) {
+            $orig.ChildNodes | Sort-Object LocalName -Descending | ForEach-Object { $mpXML.ManagementPack.SelectSingleNode($childXPath).PrependChild($_) }
+        }
+    }
 
     $mpXML.Save("$outputDir\$($mp.Name).xml")
 }
