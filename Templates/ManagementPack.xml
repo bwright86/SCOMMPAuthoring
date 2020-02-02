@@ -6,6 +6,18 @@
   </TypeDefinitions>  
   <Monitoring>
   </Monitoring>
+  <Templates>
+  </Templates>
+  <Categories>
+  </Categories>
+  <PresentationTypes>
+  </PresentationTypes>
+  <Presentation>
+  </Presentation>
+  <Reporting>
+  </Reporting>
+  <Resources>
+  </Resources>
   <LanguagePacks>
   </LanguagePacks>
 </ManagementPack>
