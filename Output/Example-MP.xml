@@ -37,12 +37,12 @@
   <TypeDefinitions>
     <EntityTypes>
       <ClassTypes>
-        <ClassType ID="##CompanyID##.##AppName##.##UniqueID##.Class" Base="Windows!Microsoft.Windows.LocalApplication" Accessibility="Public" Abstract="false" Hosted="true" Singleton="false">
-          <Property ID="Version" Type="string" />
-          <Property ID="Path" Type="string" />
-          <!-- We choose Microsoft.Windows.LocalApplication as our generic base class -->
-          <!-- This specific fragment example has class properties for Version and Path as examples only.  You can change or remove these if not desired -->
+        <ClassType ID="##CompanyID##.##AppName##.##UniqueID##.Class" Accessibility="Public" Abstract="false" Base="MUL!Microsoft.Unix.LocalApplication" Hosted="true" Singleton="false">
+          <Property ID="AppName" Type="string" Key="true" CaseSensitive="false" MaxLength="256" MinLength="0" />
+          <Property ID="InstallPath" Type="string" Key="false" CaseSensitive="false" MaxLength="256" MinLength="0" />
         </ClassType>
+        <ClassType ID="##CompanyID##.##AppName##.##UniqueID##.Class" Base="Windows!Microsoft.Windows.LocalApplication" Accessibility="Public" Abstract="false" Hosted="true" Singleton="false" />
+        <!-- We choose Microsoft.Windows.LocalApplication as our generic base class -->
         <ClassType ID="##CompanyID##.##AppName##.##UniqueID##.Class" Base="Windows!Microsoft.Windows.LocalApplication" Accessibility="Public" Abstract="false" Hosted="true" Singleton="false">
           <Property ID="Version" Type="string" />
           <Property ID="Path" Type="string" />
@@ -52,6 +52,139 @@
       </ClassTypes>
     </EntityTypes>
     <ModuleTypes>
+      <DataSourceModuleType ID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.DS" Accessibility="Public" Batching="false">
+        <Configuration>
+          <xsd:element minOccurs="1" name="TargetSystem" type="xsd:string" />
+          <xsd:element minOccurs="1" name="IntervalSeconds" type="xsd:integer" />
+          <xsd:element minOccurs="1" name="AppPath" type="xsd:string" />
+        </Configuration>
+        <OverrideableParameters>
+          <OverrideableParameter ID="AppPath" Selector="$Config/AppPath$" ParameterType="string" />
+        </OverrideableParameters>
+        <ModuleImplementation Isolation="Any">
+          <Composite>
+            <MemberModules>
+              <DataSource ID="DS" TypeID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.Shell.DS">
+                <TargetSystem>$Config/TargetSystem$</TargetSystem>
+                <ShellCommand>ls $Config/AppPath$ | wc -l</ShellCommand>
+                <TimeoutSeconds>120</TimeoutSeconds>
+                <IntervalSeconds>$Config/IntervalSeconds$</IntervalSeconds>
+              </DataSource>
+              <ConditionDetection ID="Mapper" TypeID="System!System.Discovery.FilteredClassSnapshotDataMapper">
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">//*[local-name()="StdOut"]</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="String">1</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+                <ClassId>$MPElement[Name='##CompanyID##.##AppName##.##UniqueID##.Class']$</ClassId>
+                <InstanceSettings>
+                  <Settings>
+                    <Setting>
+                      <Name>$MPElement[Name='##CompanyID##.##AppName##.##UniqueID##.Class']/AppName$</Name>
+                      <Value>##UniqueID##</Value>
+                    </Setting>
+                    <Setting>
+                      <Name>$MPElement[Name='##CompanyID##.##AppName##.##UniqueID##.Class']/InstallPath$</Name>
+                      <Value>$Config/AppPath$</Value>
+                    </Setting>
+                    <Setting>
+                      <Name>$MPElement[Name='System!System.Entity']/DisplayName$</Name>
+                      <Value>$Config/TargetSystem$</Value>
+                    </Setting>
+                    <Setting>
+                      <Name>$MPElement[Name='MUL!Microsoft.Unix.Computer']/PrincipalName$</Name>
+                      <Value>$Config/TargetSystem$</Value>
+                    </Setting>
+                  </Settings>
+                </InstanceSettings>
+              </ConditionDetection>
+            </MemberModules>
+            <Composition>
+              <Node ID="Mapper">
+                <Node ID="DS" />
+              </Node>
+            </Composition>
+          </Composite>
+        </ModuleImplementation>
+        <OutputType>System!System.Discovery.Data</OutputType>
+      </DataSourceModuleType>
+      <DataSourceModuleType ID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.Shell.DS" Accessibility="Public" Batching="false">
+        <Configuration>
+          <xsd:element minOccurs="1" name="TargetSystem" type="xsd:string" />
+          <xsd:element minOccurs="1" name="ShellCommand" type="xsd:string" />
+          <xsd:element minOccurs="1" name="TimeoutSeconds" type="xsd:integer" />
+          <xsd:element minOccurs="1" name="IntervalSeconds" type="xsd:integer" />
+        </Configuration>
+        <OverrideableParameters>
+          <OverrideableParameter ID="IntervalSeconds" Selector="$Config/IntervalSeconds$" ParameterType="int" />
+        </OverrideableParameters>
+        <ModuleImplementation Isolation="Any">
+          <Composite>
+            <MemberModules>
+              <DataSource ID="DS" TypeID="System!System.Scheduler">
+                <Scheduler>
+                  <SimpleReccuringSchedule>
+                    <Interval>$Config/IntervalSeconds$</Interval>
+                  </SimpleReccuringSchedule>
+                  <ExcludeDates />
+                </Scheduler>
+              </DataSource>
+              <ProbeAction ID="Probe" TypeID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.ShellCommand.PA">
+                <TargetSystem>$Config/TargetSystem$</TargetSystem>
+                <ShellCommand>$Config/ShellCommand$</ShellCommand>
+                <TimeoutSeconds>$Config/TimeoutSeconds$</TimeoutSeconds>
+              </ProbeAction>
+            </MemberModules>
+            <Composition>
+              <Node ID="Probe">
+                <Node ID="DS" />
+              </Node>
+            </Composition>
+          </Composite>
+        </ModuleImplementation>
+        <OutputType>MSWL!Microsoft.SystemCenter.WSManagement.WSManData</OutputType>
+      </DataSourceModuleType>
+      <ProbeActionModuleType ID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.ShellCommand.PA" Accessibility="Public" Batching="false" PassThrough="false">
+        <Configuration>
+          <xsd:element minOccurs="1" name="TargetSystem" type="xsd:string" />
+          <xsd:element minOccurs="1" name="ShellCommand" type="xsd:string" />
+          <xsd:element minOccurs="1" name="TimeoutSeconds" type="xsd:integer" />
+        </Configuration>
+        <OverrideableParameters>
+          <OverrideableParameter ID="TargetSystem" Selector="$Config/TargetSystem$" ParameterType="string" />
+          <OverrideableParameter ID="ShellCommand" Selector="$Config/ShellCommand$" ParameterType="string" />
+          <OverrideableParameter ID="TimeoutSeconds" Selector="$Config/TimeoutSeconds$" ParameterType="int" />
+        </OverrideableParameters>
+        <ModuleImplementation Isolation="Any">
+          <Composite>
+            <MemberModules>
+              <ProbeAction ID="Probe" TypeID="MUL!Microsoft.Unix.WSMan.Invoke.ProbeAction">
+                <TargetSystem>$Config/TargetSystem$</TargetSystem>
+                <Uri>http://schemas.microsoft.com/wbem/wscim/1/cim-schema/2/SCX_OperatingSystem?__cimnamespace=root/scx</Uri>
+                <Selector />
+                <InvokeAction>ExecuteShellCommand</InvokeAction>
+                <Input><![CDATA[
+<p:ExecuteShellCommand_INPUT xmlns:p="http://schemas.microsoft.com/wbem/wscim/1/cim-schema/2/SCX_OperatingSystem">
+<p:command>$Config/ShellCommand$</p:command>
+<p:timeout>$Config/TimeoutSeconds$</p:timeout>
+</p:ExecuteShellCommand_INPUT>
+]]></Input>
+              </ProbeAction>
+            </MemberModules>
+            <Composition>
+              <Node ID="Probe" />
+            </Composition>
+          </Composite>
+        </ModuleImplementation>
+        <OutputType>MSWL!Microsoft.SystemCenter.WSManagement.WSManData</OutputType>
+        <InputType>System!System.BaseData</InputType>
+      </ProbeActionModuleType>
       <DataSourceModuleType ID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.DS" Accessibility="Internal" Batching="false">
         <Configuration>
           <xsd:element name="IntervalSeconds" type="xsd:integer" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
@@ -292,124 +425,63 @@ $momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Script Completed. `n Script Ru
   </TypeDefinitions>
   <Monitoring>
     <Discoveries>
-      <Discovery ID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery" Target="Windows!Microsoft.Windows.Server.OperatingSystem" Enabled="true" ConfirmDelivery="false" Remotable="true" Priority="Normal">
-        <!-- We choose Microsoft.Windows.Server.OperatingSystem as the preferred target class to ensure this will run on all Windows Servers, but will not create duplicates on clusters -->
+      <Discovery ID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery" Enabled="true" Target="MUL!Microsoft.Unix.Computer" ConfirmDelivery="true" Remotable="true" Priority="Normal">
         <Category>Discovery</Category>
         <DiscoveryTypes>
-          <DiscoveryClass TypeID="##CompanyID##.##AppName##.##UniqueID##.Class">
-            <Property PropertyID="Version" />
-            <Property PropertyID="Path" />
-          </DiscoveryClass>
+          <DiscoveryClass TypeID="##CompanyID##.##AppName##.##UniqueID##.Class" />
         </DiscoveryTypes>
-        <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.TimedPowerShell.DiscoveryProvider">
-          <IntervalSeconds>86400</IntervalSeconds>
-          <SyncTime />
-          <ScriptName>##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.ps1</ScriptName>
-          <ScriptBody>
-#=================================================================================
-#  Describe Script Here
-#
-#  Author: 
-#  v1.0
-#=================================================================================
-param($SourceId,$ManagedEntityId,$ComputerName)
-
-
-# Manual Testing section - put stuff here for manually testing script - typically parameters:
-#=================================================================================
-# $SourceId = '{00000000-0000-0000-0000-000000000000}'
-# $ManagedEntityId = '{00000000-0000-0000-0000-000000000000}'
-# $ComputerName = "computername.domain.com"
-# $Computername = 'server.domain.com'
-#=================================================================================
-
-
-# Constants section - modify stuff here:
-#=================================================================================
-# Assign script name variable for use in event logging.  
-# ScriptName should be the same as the ID of the module that the script is contained in
-$ScriptName = "##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.ps1"
-$EventID = "1234"
-#=================================================================================
-
-
-# Starting Script section - All scripts get this
-#=================================================================================
-# Gather the start time of the script
-$StartTime = Get-Date
-#Set variable to be used in logging events
-$whoami = whoami
-# Load MOMScript API
-$momapi = New-Object -comObject MOM.ScriptAPI
-#Log script event that we are starting task
-$momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Script is starting. `n Running as ($whoami).")
-#=================================================================================
-	
-
-# Discovery Script section - Discovery scripts get this
-#=================================================================================
-# Load SCOM Discovery module
-$DiscoveryData = $momapi.CreateDiscoveryData(0, $SourceId, $ManagedEntityId)
-#=================================================================================	
-
-
-# Begin MAIN script section
-#=================================================================================
-# Test to see if folder exists
-$Folder = "C:\TEST"
-$FolderExists = Test-Path $Folder
-
-#Set variables for discovered instances
-$Version = "2.0"
-
-# If folder exists create instance of class
-If ($FolderExists -eq $true)
-{
-	$instance = $DiscoveryData.CreateClassInstance("$MPElement[Name='##CompanyID##.##AppName##.##UniqueID##.Class']$")
-	$instance.AddProperty("$MPElement[Name='Windows!Microsoft.Windows.Computer']/PrincipalName$", $ComputerName)
-	$instance.AddProperty("$MPElement[Name='##CompanyID##.##AppName##.##UniqueID##.Class']/Version$", $Version)
-	$instance.AddProperty("$MPElement[Name='##CompanyID##.##AppName##.##UniqueID##.Class']/Path$", $Folder)
-	$instance.AddProperty("$MPElement[Name='System!System.Entity']/DisplayName$", $ComputerName)
-	$DiscoveryData.AddInstance($instance)
-}
-Else
-{
-	# Log an event for no objects discovered
-	$momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Discovery script returned no discovered objects") 		
-}
-
-# Return Discovery Items Normally           
-$DiscoveryData
-# Return Discovery Bag to the command line for testing (does not work from ISE)
-# $momapi.Return($DiscoveryData)
-#=================================================================================
-# End MAIN script section
-
-
-# End of script section
-#=================================================================================
-#Log an event for script ending and total execution time.
-$EndTime = Get-Date
-$ScriptTime = ($EndTime - $StartTime).TotalSeconds
-$momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Script Completed. `n Script Runtime: ($ScriptTime) seconds.")
-#=================================================================================
-# End of script
-</ScriptBody>
-          <Parameters>
-            <Parameter>
-              <Name>SourceID</Name>
-              <Value>$MPElement$</Value>
-            </Parameter>
-            <Parameter>
-              <Name>ManagedEntityID</Name>
-              <Value>$Target/Id$</Value>
-            </Parameter>
-            <Parameter>
-              <Name>ComputerName</Name>
-              <Value>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/PrincipalName$</Value>
-            </Parameter>
-          </Parameters>
-          <TimeoutSeconds>120</TimeoutSeconds>
+        <DataSource ID="DS" TypeID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery.DS">
+          <TargetSystem>$Target/Property[Type="MUL!Microsoft.Unix.Computer"]/PrincipalName$</TargetSystem>
+          <IntervalSeconds>14400</IntervalSeconds>
+          <AppPath>##AppFilePath##</AppPath>
+        </DataSource>
+      </Discovery>
+      <Discovery ID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery" Target="Windows!Microsoft.Windows.Server.OperatingSystem" Enabled="true" ConfirmDelivery="false" Remotable="true" Priority="Normal">
+        <!-- We choose Microsoft.Windows.Server.OperatingSystem as the preferred target class to ensure this will run on all Windows Servers, but wont create duplicates on clusters -->
+        <Category>Discovery</Category>
+        <DiscoveryTypes>
+          <DiscoveryClass TypeID="##CompanyID##.##AppName##.##UniqueID##.Class" />
+        </DiscoveryTypes>
+        <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.FilteredRegistryDiscoveryProvider">
+          <ComputerName>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/PrincipalName$</ComputerName>
+          <RegistryAttributeDefinitions>
+            <RegistryAttributeDefinition>
+              <AttributeName>##UniqueID##RegValueExists</AttributeName>
+              <Path>##RegValuePath##</Path>
+              <PathType>1</PathType>
+              <!-- 0=RegKey 1=RegValue -->
+              <AttributeType>0</AttributeType>
+              <!-- 0=CheckIfExists (Boolean) 1=treat data as (String) 2=treat data as (Integer) -->
+            </RegistryAttributeDefinition>
+          </RegistryAttributeDefinitions>
+          <Frequency>86400</Frequency>
+          <ClassId>$MPElement[Name="##CompanyID##.##AppName##.##UniqueID##.Class"]$</ClassId>
+          <InstanceSettings>
+            <Settings>
+              <Setting>
+                <Name>$MPElement[Name="Windows!Microsoft.Windows.Computer"]/PrincipalName$</Name>
+                <Value>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/PrincipalName$</Value>
+              </Setting>
+              <Setting>
+                <Name>$MPElement[Name="System!System.Entity"]/DisplayName$</Name>
+                <Value>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/PrincipalName$</Value>
+              </Setting>
+            </Settings>
+          </InstanceSettings>
+          <Expression>
+            <SimpleExpression>
+              <ValueExpression>
+                <XPathQuery Type="Boolean">Values/##UniqueID##RegValueExists</XPathQuery>
+                <!-- Common options for XPathQuery Type are "Boolean" "String" "Integer" "Double" -->
+              </ValueExpression>
+              <Operator>Equal</Operator>
+              <!-- Common options for SimpleExpression Operator are "Equal" "NotEqual" "Greater" "Less" "GreaterEqual" "LessEqual" "Like" "NotLike" -->
+              <ValueExpression>
+                <Value Type="Boolean">true</Value>
+                <!-- Common options for XPathQuery Type are "Boolean" "String" "Integer" "Double" -->
+              </ValueExpression>
+            </SimpleExpression>
+          </Expression>
         </DataSource>
       </Discovery>
       <Discovery ID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery" Target="Windows!Microsoft.Windows.Server.OperatingSystem" Enabled="true" ConfirmDelivery="false" Remotable="true" Priority="Normal">
@@ -452,20 +524,38 @@ $momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Script Completed. `n Script Ru
       </Task>
     </Tasks>
   </Monitoring>
+  <Templates>
+  </Templates>
+  <Categories>
+  </Categories>
+  <PresentationTypes>
+  </PresentationTypes>
+  <Presentation>
+  </Presentation>
+  <Reporting>
+  </Reporting>
+  <Resources>
+  </Resources>
   <LanguagePacks>
     <LanguagePack ID="ENU" IsDefault="true">
       <DisplayStrings>
-        <!-- Classes -->
+        <DisplayString ElementID="##CompanyID##.##AppName##.##UniqueID##.Class">
+          <Name>##CompanyID## ##AppName## ##UniqueID## Class</Name>
+          <Description />
+        </DisplayString>
+        <DisplayString ElementID="##CompanyID##.##AppName##.##UniqueID##.Class" SubElementID="AppName">
+          <Name>Application Name</Name>
+        </DisplayString>
+        <DisplayString ElementID="##CompanyID##.##AppName##.##UniqueID##.Class" SubElementID="InstallPath">
+          <Name>Install Path</Name>
+        </DisplayString>
+        <DisplayString ElementID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery">
+          <Name>##CompanyID## ##AppName## ##UniqueID## Class Discovery</Name>
+          <Description />
+        </DisplayString>
         <DisplayString ElementID="##CompanyID##.##AppName##.##UniqueID##.Class">
           <Name>##CompanyID## ##AppName## ##UniqueID## Class</Name>
         </DisplayString>
-        <DisplayString ElementID="##CompanyID##.##AppName##.##UniqueID##.Class" SubElementID="Version">
-          <Name>Version</Name>
-        </DisplayString>
-        <DisplayString ElementID="##CompanyID##.##AppName##.##UniqueID##.Class" SubElementID="Path">
-          <Name>Path</Name>
-        </DisplayString>
-        <!-- Discoveries -->
         <DisplayString ElementID="##CompanyID##.##AppName##.##UniqueID##.Class.Discovery">
           <Name>##CompanyID## ##AppName## ##UniqueID## Class Discovery</Name>
         </DisplayString>
