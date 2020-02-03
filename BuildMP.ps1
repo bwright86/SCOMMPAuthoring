@@ -4,12 +4,12 @@
 
 # AUTHOR:  Brent Wright
 # DATE:  12/29/2019
-# EMAIL: brent.g.wright@gmail.com
 
 ## COMMENT:  Compiles an MP project with fragments, into a full SCOM MP.
 
 ## VERSION HISTORY
-#   mm/dd/yyyy - user name - fixed bug or added new feature...
+#   01/30/2020 - Updated XML merging to use a list of nodes to merge. This reduces issues with merging at incorrect node level.
+#   02/02/2020 - Now sorting childnodes at the end of merge. (Validation was flagging some ModuleTypes that were out of order.)
 
 ## TO ADD
 # -Add a Function to ...
