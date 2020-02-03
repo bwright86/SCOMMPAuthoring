@@ -48,7 +48,9 @@ $xmlChildPaths = @(
 )
 
 # XML Nodes to ignore.
-$ignoreXMLNodes = @("/#text","/#comment")
+$ignoreXMLNodes = @(
+    "/#comment"
+)
 
 
 #endregion  User Configuration
@@ -74,6 +76,8 @@ $managementPacks = Get-ChildItem $MPBuildDir
 if ( -not $(Test-Path $outputDir) ) {
     $null = New-Item $outputDir -ItemType Directory -Force
 }
+
+"The following nodes are being ignored for merging:`n- {0}`n`n" -f $($ignoreXMLNodes -join "`n- ") | Write-Host -ForegroundColor Cyan
 
 "Management Packs to build: {0}" -f $managementPacks.count | Write-Host
 
@@ -134,7 +138,7 @@ foreach ($mp in $managementPacks) {
 
                     $XPath = $(Split-Path -Path $XPath -Parent) -replace "\\","/"
 
-                    "      XPath doesn't exist, trimming to: $XPath"
+                    "      XPath doesn't exist, trimming to: $XPath" | Write-Verbose
 
                     if ($mpXML.SelectNodes("ManagementPack/$XPath").count -gt 0) {
                         $nodeNotExist = $false
@@ -144,7 +148,7 @@ foreach ($mp in $managementPacks) {
                 $childNode = $fragXML.SelectNodes("ManagementPackFragment/$childXPath")
                 $mpXML.SelectNodes("/ManagementPack/$XPath").AppendChild($mpXML.ImportNode($childNode.clone(),$true)) | Out-Null
 
-                "      ChildNode `"{0}`" added to parent: {1}" -f $(split-path $childXPath -Leaf), $XPath | Write-Host
+                "      ChildNode `"{0}`" added to parent: {1}" -f $(split-path $childXPath -Leaf), $XPath | Write-Verbose
 
                 # Remove any items that were merged.
                 $fragXMLLeafNodes = $fragXMLLeafNodes | Where-Object {$_ -notlike "/$childXPath*"}
@@ -162,11 +166,16 @@ foreach ($mp in $managementPacks) {
     # Sort child nodes alphabetically.
     foreach ($childXPath in $xmlChildPaths) {
 
+        $([System.Xml.XmlNode]$orig = $mpXML.ManagementPack.SelectSingleNode($childXPath))
+
         # Check that node exists.
-        if ($([System.Xml.XmlNode]$orig = $mpXML.ManagementPack.SelectSingleNode($childXPath)) -and $orig.ChildNode.count -gt 0) {
-            $orig.ChildNodes | Sort-Object LocalName -Descending | ForEach-Object { $mpXML.ManagementPack.SelectSingleNode($childXPath).PrependChild($_) }
+        if ($null -ne $orig -and $orig.ChildNodes.count -gt 0) {
+            $orig.ChildNodes | Sort-Object LocalName -Descending | ForEach-Object { $mpXML.ManagementPack.SelectSingleNode($childXPath).PrependChild($_) } | Out-Null
+            "Sorting childnodes for: $childXPath" | Write-Host -ForegroundColor White
         }
     }
 
     $mpXML.Save("$outputDir\$($mp.Name).xml")
+
+    "Writing final MP for: $($mp.Name)`n`n`n" | Write-Host -ForegroundColor Green
 }
