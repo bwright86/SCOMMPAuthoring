@@ -8,7 +8,7 @@
 ## COMMENT:  Description of script.
 
 ## VERSION HISTORY
-#   mm/dd/yyyy - user name - fixed bug or added new feature...
+#   03/08/2020 - Brent Wright - Added multiple MP Reference folders, and included the Output folder as a reference folder. This allows custom built MPs to be referenced after sealing them.
 
 ## TO ADD
 # -Add a Function to ...
@@ -29,7 +29,10 @@ $outputFolder = "$PSScriptRoot\Output\"
 $keyFile = "$PSScriptRoot\PublicKey.snk"
 
 # A folder with the required .mp files to cover references.
-$MPReferenceFolder = "$PSScriptRoot\SupportTools\ManagementPacks"
+$MPReferenceFolders = @(
+    "$PSScriptRoot\SupportTools\ManagementPacks"
+    "$PSScriptRoot\Output"
+)
 
 # Name of the company to seal in MP
 $CompanyName = "Fabrikam"
@@ -62,3 +65,5 @@ if ($PSBoundParameters.ContainsKey("XMLFile")) {
 }
 
 MPSeal.exe $chosenFile /Keyfile $keyFile /Company $CompanyName /Outdir $outputFolder
+
+Invoke-Expression $("MPSeal.exe {0} /Keyfile {1} /I `"{2}`" /Company {3} /Outdir {4}" -f $chosenFile, $keyFile, $($MPReferenceFolders -join "`" /I `""), $CompanyName, $outputFolder)

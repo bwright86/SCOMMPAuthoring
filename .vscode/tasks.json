@@ -46,7 +46,27 @@
             "problemMatcher": []
         },
         {
-            "label": "Build",
+            "label": "MPSeal (Current File)",
+            "type": "shell",
+            "command": "Invoke-psake psakeBuild.ps1 -taskList Seal -Parameters @{File='${file}'}",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build MP (From Current File",
+            "type": "shell",
+            "command": "Invoke-psake psakeBuild.ps1 -taskList BuildMP -Parameters @{File='${file}'}",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build MP",
             "type": "shell",
             "command": "Invoke-psake psakeBuild.ps1 -taskList Build",
             "group": {

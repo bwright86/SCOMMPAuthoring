@@ -10,11 +10,15 @@
 ## VERSION HISTORY
 #   01/30/2020 - Updated XML merging to use a list of nodes to merge. This reduces issues with merging at incorrect node level.
 #   02/02/2020 - Now sorting childnodes at the end of merge. (Validation was flagging some ModuleTypes that were out of order.)
+#   03/08/2020 - Improved merging of parent nodes, fixed issue where child nodes were duplicated after a parent node was merged for a sibling node.
+#              - Manifest's Build version is incremented now for every run, Major, Minor, and revision are carried over from previous version.
 
 ## TO ADD
 # -Add a Function to ...
 # -Fix the...
 # #############################################################################
+
+param ([string]$MPDir)
 
 $here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
@@ -31,6 +35,7 @@ $xmlChildPaths = @(
     "TypeDefinitions/EntityTypes/RelationshipTypes"
     "TypeDefinitions/ModuleTypes"
     "TypeDefinitions/MonitorTypes"
+    "TypeDefinitions/SecureReferences"
     "Monitoring/Discoveries"
     "Monitoring/Monitors"
     "Monitoring/Recoveries"
@@ -45,6 +50,11 @@ $xmlChildPaths = @(
     "Resources"
     "LanguagePacks/LanguagePack/DisplayStrings"
     "LanguagePacks/LanguagePack/KnowledgeArticles"
+)
+
+# A list of paths where child nodes should be sorted.
+$xmlChildPathSorts = @(
+    "TypeDefinitions/ModuleTypes"
 )
 
 # XML Nodes to ignore.
@@ -69,8 +79,15 @@ function Get-XMLChildNodePath {
 }
 
 
+# If MP folder was provided, compile a single MP.
+if ( $PSBoundParameters.ContainsKey("MPDir") ) {
 
-$managementPacks = Get-ChildItem $MPBuildDir
+    $managementPacks = Get-Item $MPDir
+
+# Otherwise, retrieve all MP folders and compile each one.
+} else {
+    $managementPacks = Get-ChildItem $MPBuildDir
+}
 
 
 if ( -not $(Test-Path $outputDir) ) {
@@ -89,6 +106,29 @@ foreach ($mp in $managementPacks) {
 
     # Get a list of .mpx files in the MP project, along with the manifest.mpx.
     $fragments = @(Get-ChildItem -Path $mp.fullname -Filter "*.mpx" -Recurse)
+
+    #region Manifest - Increment Build
+    
+    
+    # Read in the manifest xml.
+    $manifestXMLPath = Join-Path $mp.FullName "Manifest.mpx"
+    [xml]$manifestXML = Get-Content -Path $manifestXMLPath
+
+    $curVer = [version]$manifestXMLPath.ManagementPackFragment.manifest.Identity.version
+
+    $newVer = [version]::new($curVer.Major,$curVer.Minor,$curVer.Build+1,$curVer.Revision)
+
+    # Update the manifest version with the new version.
+    $manifestXML.ManagementPackFragment.Manifest.Identity.version = $newVer.ToString()
+
+    $manifestXML.Save($manifestXMLPath)
+
+    "  Manifest version build incremented: $curVer -> $newVer"
+    
+    
+    #endregion  Manifest - Increment Build
+
+
 
     "{0}: Fragments to add: {1}" -f $mp.Name, $fragments.count | Write-Host
 
@@ -111,13 +151,21 @@ foreach ($mp in $managementPacks) {
             }
         }
 
+        # List of nodes to skip merging after parent node is merged.
+        $skipDueToParentMerge = @()
+
         # Perform the merge into the MP XML document.
         foreach ($XPath in $eligibleXPaths) {
 
             "    Adding nodes from XPath: $XPath" | Write-Host
 
+            # Check if node was merged in previous parent merge.
+            if ( $($skipDueToParentMerge | Where-Object {$XPath -like "*$_*"}).Count -gt 0 ) {
+
+                "      Skipping node... Merged from previous parent node merge." | Write-Host -ForegroundColor Yellow
+
             # Check if the XPath exists in MP XML.
-            if ($mpXML.SelectNodes("ManagementPack/$XPath").count -gt 0) {
+            } elseif ($mpXML.SelectNodes("ManagementPack/$XPath").count -gt 0) {
 
                 foreach ($childNode in $fragXML.SelectNodes("ManagementPackFragment/$xpath").ChildNodes) {
                     $mpXML.SelectNodes("/ManagementPack/$XPath").AppendChild($mpXML.ImportNode($childNode.clone(),$true)) | Out-Null
@@ -147,8 +195,9 @@ foreach ($mp in $managementPacks) {
 
                 $childNode = $fragXML.SelectNodes("ManagementPackFragment/$childXPath")
                 $mpXML.SelectNodes("/ManagementPack/$XPath").AppendChild($mpXML.ImportNode($childNode.clone(),$true)) | Out-Null
+                $skipDueToParentMerge += $childXPath
 
-                "      ChildNode `"{0}`" added to parent: {1}" -f $(split-path $childXPath -Leaf), $XPath | Write-Verbose
+                "      ChildNode `"{0}`" added to parent: {1}" -f $(split-path $childXPath -Leaf), $XPath | Write-Host -ForegroundColor Yellow
 
                 # Remove any items that were merged.
                 $fragXMLLeafNodes = $fragXMLLeafNodes | Where-Object {$_ -notlike "/$childXPath*"}
@@ -164,7 +213,7 @@ foreach ($mp in $managementPacks) {
     } # Foreach: Fragment
 
     # Sort child nodes alphabetically.
-    foreach ($childXPath in $xmlChildPaths) {
+    foreach ($childXPath in $($xmlChildPaths | Where-Object {$_ -in $xmlChildPathSorts}) ) {
 
         $([System.Xml.XmlNode]$orig = $mpXML.ManagementPack.SelectSingleNode($childXPath))
 
